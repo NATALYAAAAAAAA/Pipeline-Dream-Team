@@ -1,2 +1,5 @@
 # Pipeline-Dream-Team
-Data Engineering Internship Team Project
+Список участников: 
+1. Косицына Наталья
+2. Косицын Илья
+3. Разумков Антон
