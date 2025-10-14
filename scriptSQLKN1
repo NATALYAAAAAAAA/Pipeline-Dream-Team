@@ -1,0 +1,8 @@
+-- Поиск дубликатов пользователей по email и телефону
+SELECT 
+    email,
+    phone,
+    COUNT(*) as duplicate_count
+FROM users
+GROUP BY email, phone
+HAVING COUNT(*) > 1;
