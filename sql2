@@ -1,3 +1,4 @@
+-- Скрипты создания таблиц
 -- Исходная таблица с данными
 CREATE TABLE source_products (
     product_id INT,
@@ -19,6 +20,8 @@ CREATE TABLE dim_products_scd2 (
     is_current BOOLEAN DEFAULT TRUE,
     version_number INT DEFAULT 1
 );
+
+-- Скрипты работы с таблицами
 -- Процедура для обработки SCD Type 2
 WITH current_data AS (
     SELECT 
