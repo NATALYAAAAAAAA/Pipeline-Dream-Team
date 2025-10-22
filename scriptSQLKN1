@@ -10,4 +10,4 @@ HAVING COUNT(*) > 1;
 -- Найдем уникальных пользователей
 SELECT
     DISTINCT(user)
-FROM users
+FROM users_new-- Изменила наименование сущности
