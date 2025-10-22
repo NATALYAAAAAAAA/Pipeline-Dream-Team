@@ -1,0 +1,124 @@
+-- Скрипты создания таблиц
+-- Исходная таблица с данными
+CREATE TABLE source_products (
+    product_id INT,
+    product_name VARCHAR(100),
+    category VARCHAR(50),
+    price DECIMAL(10,2),
+    effective_date DATE
+);
+
+-- Таблица измерений SCD Type 2
+CREATE TABLE dim_products_scd2 (
+    product_key SERIAL PRIMARY KEY,
+    product_id INT,
+    product_name VARCHAR(100),
+    category VARCHAR(50),
+    price DECIMAL(10,2),
+    effective_date DATE,
+    end_date DATE,
+    is_current BOOLEAN DEFAULT TRUE,
+    version_number INT DEFAULT 1
+);
+
+-- Скрипты работы с таблицами
+-- Процедура для обработки SCD Type 2
+WITH current_data AS (
+    SELECT 
+        product_id,
+        product_name,
+        category,
+        price,
+        effective_date
+    FROM source_products
+    WHERE effective_date = CURRENT_DATE
+),
+existing_records AS (
+    SELECT 
+        product_key,
+        product_id,
+        product_name,
+        category,
+        price,
+        effective_date,
+        end_date,
+        is_current
+    FROM dim_products_scd2
+    WHERE is_current = TRUE
+),
+-- Находим изменения
+changes AS (
+    SELECT 
+        c.product_id,
+        c.product_name,
+        c.category,
+        c.price,
+        c.effective_date,
+        CASE 
+            WHEN e.product_id IS NULL THEN 'INSERT'
+            WHEN c.category != e.category THEN 'UPDATE' -- Атрибут для отслеживания изменений
+            ELSE 'NO_CHANGE'
+        END as change_type
+    FROM current_data c
+    LEFT JOIN existing_records e ON c.product_id = e.product_id
+),
+-- Обрабатываем новые записи
+new_records AS (
+    SELECT 
+        product_id,
+        product_name,
+        category,
+        price,
+        effective_date
+    FROM changes
+    WHERE change_type = 'INSERT'
+),
+-- Обрабатываем обновления
+updates AS (
+    SELECT 
+        product_id,
+        product_name,
+        category,
+        price,
+        effective_date
+    FROM changes
+    WHERE change_type = 'UPDATE'
+)
+-- Вставляем новые записи
+INSERT INTO dim_products_scd2 (
+    product_id, product_name, category, price, effective_date, end_date, is_current
+)
+SELECT 
+    product_id,
+    product_name,
+    category,
+    price,
+    effective_date,
+    '9999-12-31' as end_date,
+    TRUE as is_current
+FROM new_records;
+
+-- Закрываем старые версии и создаем новые для измененных записей
+UPDATE dim_products_scd2 
+SET 
+    end_date = CURRENT_DATE - INTERVAL '1 day',
+    is_current = FALSE
+WHERE product_id IN (
+    SELECT product_id FROM changes WHERE change_type = 'UPDATE'
+) 
+AND is_current = TRUE;
+
+-- Вставляем новые версии измененных записей
+INSERT INTO dim_products_scd2 (
+    product_id, product_name, category, price, effective_date, end_date, is_current, version_number
+)
+SELECT 
+    u.product_id,
+    u.product_name,
+    u.category,
+    u.price,
+    u.effective_date,
+    '9999-12-31' as end_date,
+    TRUE as is_current,
+    (SELECT MAX(version_number) FROM dim_products_scd2 WHERE product_id = u.product_id) + 1 as version_number
+FROM updates u;
