@@ -6,3 +6,8 @@ SELECT
 FROM users
 GROUP BY email, phone
 HAVING COUNT(*) > 1;
+
+-- Найдем уникальных пользователей
+SELECT
+    DISTINCT(user)
+FROM users
