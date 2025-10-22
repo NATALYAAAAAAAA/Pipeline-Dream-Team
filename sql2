@@ -121,4 +121,4 @@ SELECT
     '9999-12-31' as end_date,
     TRUE as is_current,
     (SELECT MAX(version_number) FROM dim_products_scd2 WHERE product_id = u.product_id) + 1 as version_number
-FROM updates u;
+FROM updates_new u;-- Изменила наименование сущности
